@@ -52,40 +52,54 @@ function get-bls-gov ($series)
 # https://data.bls.gov/cgi-bin/surveymost?cu
 
 # https://download.bls.gov/pub/time.series/cu/cu.item
+# ----------------------------------------------------------------------
 
+function add-null-property ($data, $name)
+{
+    foreach ($elt in $data)
+    {
+        $elt | Add-Member -MemberType NoteProperty -Name $name -Value $null -Force
+    }    
+}
+
+function add-yoy-property ($data)
+{
+    for ($i = 12; $i -lt $data.Count; $i++)
+    {
+        $val = [math]::Round((percent-change $data[$i-12].value $data[$i].value), 1)
+    
+        $data[$i] | Add-Member -MemberType NoteProperty -Name yoy -Value $val -Force
+    }    
+}
 
 # ----------------------------------------------------------------------
 $data_all_nsa = get-bls-gov 'CUUR0000SA0'
 
-foreach ($elt in $data_all_nsa)
-{
-    $elt | Add-Member -MemberType NoteProperty -Name yoy -Value $null -Force
-}
+add-null-property $data_all_nsa 'yoy'
 
-for ($i = 12; $i -lt $data_all_nsa.Count; $i++)
-{
-    $val = [math]::Round((percent-change $data_all_nsa[$i-12].value $data_all_nsa[$i].value), 1)
+add-yoy-property $data_all_nsa
 
-    $data_all_nsa[$i] | Add-Member -MemberType NoteProperty -Name yoy -Value $val -Force
-}
-
-$data_all_nsa | ft *
+# $data_all_nsa | ft *
 # ----------------------------------------------------------------------
 $data_core_nsa = get-bls-gov 'CUUR0000SA0L1E'
 
-foreach ($elt in $data_core_nsa)
-{
-    $elt | Add-Member -MemberType NoteProperty -Name yoy -Value $null -Force
-}
+add-null-property $data_core_nsa 'yoy'
 
-for ($i = 12; $i -lt $data_core_nsa.Count; $i++)
-{
-    $val = [math]::Round((percent-change $data_core_nsa[$i-12].value $data_core_nsa[$i].value), 1)
+add-yoy-property $data_core_nsa
 
-    $data_core_nsa[$i] | Add-Member -MemberType NoteProperty -Name yoy -Value $val -Force
-}
+# $data_core_nsa | ft *
+# ----------------------------------------------------------------------
+$data_shelter_nsa = get-bls-gov 'CUUR0000SAH1'
 
-$data_core_nsa | ft *
+add-null-property $data_shelter_nsa 'yoy'
+
+add-yoy-property $data_shelter_nsa
+
+
+# $data_shelter   = get-bls-gov 'CUSR0000SAH1' # SAH1	Shelter
+# ----------------------------------------------------------------------
+$data = get-bls-gov 'CUUR0000SAF1';     add-null-property $data 'yoy';   add-yoy-property $data;   $data_food_nsa = $data
+$data = get-bls-gov 'CUUR0000SEHF01';   add-null-property $data 'yoy';   add-yoy-property $data;   $data_electricity_nsa = $data
 # ----------------------------------------------------------------------
 $json = @{
     chart = @{
@@ -95,8 +109,11 @@ $json = @{
             labels = $data_all_nsa | Select-Object -Skip 12 | ForEach-Object { Get-Date ('{0} {1}' -f $_.year, $_.periodName.Substring(0,3)) -Format 'yyyy-MM-dd' }
 
             datasets = @(
-                @{ type = 'bar' ; label = 'all' ; data = $data_all_nsa  | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
-                @{ type = 'line'; label = 'core'; data = $data_core_nsa | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
+                @{ type = 'bar' ; label = 'all'           ; data = $data_all_nsa            | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
+                @{ type = 'line'; label = 'core'          ; data = $data_core_nsa           | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
+                @{ type = 'line'; label = 'shelter'       ; data = $data_shelter_nsa        | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
+                @{ type = 'line'; label = 'food'          ; data = $data_food_nsa           | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
+                @{ type = 'line'; label = 'electricity'   ; data = $data_electricity_nsa    | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
             )
         }
         options = @{
