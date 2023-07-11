@@ -10,8 +10,6 @@ function reverse
 
 function percent-change ($a, $b)
 {
-    # ($b - $a) / $a
-
     ($b - $a) / $a * 100
 }
 
@@ -79,9 +77,7 @@ function add-mom-property ($data)
     for ($i = 1; $i -lt $data.Count; $i++)
     {
         $val = [math]::Round((percent-change $data[$i-1].value $data[$i].value), $precision)
-
-        # $val = [math]::Round((percent-change $data[$i-1].value $data[$i].value), 4)
-    
+            
         $data[$i] | Add-Member -MemberType NoteProperty -Name mom -Value $val -Force
     }    
 }
@@ -104,8 +100,8 @@ $table = for ($i = 0; $i -lt $data_all_sa.Count; $i++)
 {
     [PSCustomObject]@{
         date                 = Get-Date ('{0} {1}' -f $data_all_sa[$i].year, $data_all_sa[$i].periodName.Substring(0,3)) -Format 'yyyy-MM-dd'
-        all_mom              = $data_all_sa[$i].mom
-        core_mom             = $data_core_sa[$i].mom
+        all              = $data_all_sa[$i].mom
+        core             = $data_core_sa[$i].mom
         energy               = $data_energy[$i].mom
         shelter              = $data_shelter[$i].mom
         new_vehicles         = $data_new_vehicles[$i].mom
@@ -133,8 +129,8 @@ function delta ($table, $a, $b)
     }
 }
 
-$table = delta $table all_mom
-$table = delta $table core_mom
+$table = delta $table all
+$table = delta $table core
 $table = delta $table energy              
 $table = delta $table shelter             
 $table = delta $table new_vehicles        
@@ -181,9 +177,9 @@ function colored-val ($row, $name)
 
 $row = $table[1]
 
-$name = 'all_mom'
+$name = 'all'
 
-colored-val $table[1] all_mom
+colored-val $table[1] all
 
 # function colored-change-val ($val)
 # {
@@ -202,9 +198,9 @@ colored-val $table[1] all_mom
 
 # $table | Format-Table date, 
 #     @{
-#         Label = 'all_mom_change'
+#         Label = 'all_change'
 
-#         Expression = { colored-change-val $_.all_mom_change }
+#         Expression = { colored-change-val $_.all_change }
 
 #         Align = 'right'
 #     }
@@ -248,22 +244,22 @@ function gen-colored-field ($name)
 
 
 
-$fields = @(
-    'date'
-    (gen-field 'all_mom'),              (gen-change-field 'all_mom')
-    (gen-field 'core_mom'),             (gen-change-field 'core_mom')
-    (gen-field 'energy'),               (gen-change-field 'energy')
-    (gen-field 'shelter'),              (gen-change-field 'shelter')
-    (gen-field 'new_vehicles'),         (gen-change-field 'new_vehicles')
-    (gen-field 'used_cars_and_trucks'), (gen-change-field 'used_cars_and_trucks')
-    (gen-field 'food'),                 (gen-change-field 'food')
-)
+# $fields = @(
+#     'date'
+#     (gen-field 'all'),              (gen-change-field 'all')
+#     (gen-field 'core'),             (gen-change-field 'core')
+#     (gen-field 'energy'),               (gen-change-field 'energy')
+#     (gen-field 'shelter'),              (gen-change-field 'shelter')
+#     (gen-field 'new_vehicles'),         (gen-change-field 'new_vehicles')
+#     (gen-field 'used_cars_and_trucks'), (gen-change-field 'used_cars_and_trucks')
+#     (gen-field 'food'),                 (gen-change-field 'food')
+# )
 
 
 $fields = @(
     'date'
-    (gen-colored-field 'all_mom')
-    (gen-colored-field 'core_mom')
+    (gen-colored-field 'all')
+    (gen-colored-field 'core')
     (gen-colored-field 'energy')
     (gen-colored-field 'shelter')
     (gen-colored-field 'new_vehicles')
@@ -274,7 +270,7 @@ $fields = @(
 $fields[1].Expression
 
 
-# $table | Format-Table date, all_mom, (gen-field 'all_mom_change'), core_mom, (gen-field 'core_mom_change')
+# $table | Format-Table date, all, (gen-field 'all_change'), core, (gen-field 'core_change')
 
 $table | Format-Table $fields
 
@@ -324,8 +320,13 @@ $json = @{
             labels = $data_all_sa | Select-Object -Skip 1 | ForEach-Object { Get-Date ('{0} {1}' -f $_.year, $_.periodName.Substring(0,3)) -Format 'yyyy-MM-dd' }
 
             datasets = @(
-                @{ type = 'bar' ; label = 'all'           ; data = $data_all_sa             | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0 }
-                @{ type = 'line'; label = 'core'          ; data = $data_core_sa            | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0 }
+                @{ type = 'bar' ; label = 'all'                  ; data = $data_all_sa               | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0 }
+                @{ type = 'line'; label = 'core'                 ; data = $data_core_sa              | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0 }
+                @{ type = 'line'; label = 'energy'               ; data = $data_energy               | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+                @{ type = 'line'; label = 'shelter'              ; data = $data_shelter              | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+                @{ type = 'line'; label = 'new_vehicles'         ; data = $data_new_vehicles         | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+                @{ type = 'line'; label = 'used_cars_and_trucks' ; data = $data_used_cars_and_trucks | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+                @{ type = 'line'; label = 'food'                 ; data = $data_food                 | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
                 
                 # @{ type = 'line'; label = 'shelter'       ; data = $data_shelter_nsa        | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
                 # @{ type = 'line'; label = 'food'          ; data = $data_food_nsa           | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
@@ -336,18 +337,7 @@ $json = @{
             
             title = @{ display = $true; text = 'CPI : MoM percent changes (seasonally adjusted)' }
 
-            scales = @{ 
-                yAxes = @(
-                yAxes = @(      shelter    CUSR0000SAH1
-                    @{yAxes = @(CUSR0000SETA01shelter    CUSR0000SAH1
-
-
-                        ticks = @{
-                            beginAtZero = $true
-                        }
-                    }
-                )
-            }
+            scales = @{ yAxes = @( @{ ticks = @{ beginAtZero = $true } } ) }
         }
     }
 } | ConvertTo-Json -Depth 100
