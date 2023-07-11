@@ -16,13 +16,10 @@ function percent-change ($a, $b)
 # https://www.bls.gov/help/hlpforma.htm#CU
 
 # https://download.bls.gov/pub/time.series/cu/cu.item
-                                                                                  
 
-# $result = Invoke-RestMethod -Uri ('https://api.bls.gov/publicAPI/v1/timeseries/data/{0}' -f 'CUSR0000SA0L1E')
-
+# https://data.bls.gov/cgi-bin/surveymost?cu
+                                                                                
 # $api_key = Get-Content C:\Users\dharm\Dropbox\api-keys\bls-gov
-
-# $result = Invoke-RestMethod -Uri ('https://api.bls.gov/publicAPI/v2/timeseries/data/{0}?registrationkey={1}' -f 'CUSR0000SA0L1E', $api_key)
 
 # --------------------------------------------------------------------------------
 
@@ -48,12 +45,7 @@ function get-bls-gov ($series)
     
     $data    
 }
-
-# https://data.bls.gov/cgi-bin/surveymost?cu
-
-# https://download.bls.gov/pub/time.series/cu/cu.item
 # ----------------------------------------------------------------------
-
 function add-null-property ($data, $name)
 {
     foreach ($elt in $data)
@@ -83,7 +75,6 @@ function add-mom-property ($data)
 }
 
 # ----------------------------------------------------------------------
-
 $data = get-bls-gov 'CUSR0000SA0';    add-null-property $data 'mom'; add-mom-property $data; $data_all_sa = $data
 $data = get-bls-gov 'CUSR0000SA0L1E'; add-null-property $data 'mom'; add-mom-property $data; $data_core_sa = $data
 $data = get-bls-gov 'CUSR0000SA0E';   add-null-property $data 'mom'; add-mom-property $data; $data_energy = $data
@@ -91,11 +82,9 @@ $data = get-bls-gov 'CUSR0000SAH1';   add-null-property $data 'mom'; add-mom-pro
 $data = get-bls-gov 'CUSR0000SETA01'; add-null-property $data 'mom'; add-mom-property $data; $data_new_vehicles = $data
 $data = get-bls-gov 'CUSR0000SETA02'; add-null-property $data 'mom'; add-mom-property $data; $data_used_cars_and_trucks = $data
 $data = get-bls-gov 'CUSR0000SAF1';   add-null-property $data 'mom'; add-mom-property $data; $data_food = $data
-
+$data = get-bls-gov 'CUSR0000SAF11';  add-null-property $data 'mom'; add-mom-property $data; $data_food_at_home = $data
+$data = get-bls-gov 'CUSR0000SEFV';   add-null-property $data 'mom'; add-mom-property $data; $data_food_away_from_home = $data
 # ----------------------------------------------------------------------
-
-# $data_all_sa | ft *
-
 $table = for ($i = 0; $i -lt $data_all_sa.Count; $i++)
 {
     [PSCustomObject]@{
@@ -107,6 +96,8 @@ $table = for ($i = 0; $i -lt $data_all_sa.Count; $i++)
         new_vehicles         = $data_new_vehicles[$i].mom
         used_cars_and_trucks = $data_used_cars_and_trucks[$i].mom
         food                 = $data_food[$i].mom
+        food_at_home         = $data_food_at_home[$i].mom
+        food_away_from_home  = $data_food_away_from_home[$i].mom
     }
 }
 # ----------------------------------------------------------------------
@@ -136,25 +127,9 @@ $table = delta $table shelter
 $table = delta $table new_vehicles        
 $table = delta $table used_cars_and_trucks
 $table = delta $table food                
-
+$table = delta $table food_at_home
+$table = delta $table food_away_from_home
 # ----------------------------------------------------------------------
-# function colored-change-val ($val)
-# {
-#     $val = [math]::Round($val, 1)        
-
-#         if ($val -gt 0) { $color = '32' }
-#     elseif ($val -lt 0) { $color = '31' }
-#     else                { $color = '0' }
-
-#     $e = [char]27
-
-#     $formatted = $val.ToString('N1')
-
-#     "$e[${color}m$($formatted)${e}[0m"    
-# }
-
-
-
 function colored-val ($row, $name)
 {
     $change = $row."$($name)_change"
@@ -173,88 +148,15 @@ function colored-val ($row, $name)
 
     "$e[${color}m$($formatted)${e}[0m"    
 }
-
-
-$row = $table[1]
-
-$name = 'all'
-
-colored-val $table[1] all
-
-# function colored-change-val ($val)
-# {
-        
-
-#         if ($val -gt 0) { $color = '32' }
-#     elseif ($val -lt 0) { $color = '31' }
-#     else                { $color = '0' }
-
-#     $e = [char]27
-
-#     $formatted = $val.ToString('N1')
-
-#     "$e[${color}m$($formatted)${e}[0m"    
-# }
-
-# $table | Format-Table date, 
-#     @{
-#         Label = 'all_change'
-
-#         Expression = { colored-change-val $_.all_change }
-
-#         Align = 'right'
-#     }
-
-function gen-field ($name)
-{
-    @{
-        Label = $name
-        Expression = $name
-        Format = 'N1'
-        Align = 'right'
-    }    
-}
-
-# function gen-change-field ($name)
-# {
-#     $name = '{0}_change' -f $name
-
-#     @{
-#         Label = $name
-#         Expression = [System.Management.Automation.ScriptBlock]::Create('colored-change-val $_.{0}' -f $name)
-#         # Format = 'N1'
-#         Align = 'right'
-#     }    
-# }
-
-
+# ----------------------------------------------------------------------
 function gen-colored-field ($name)
 {
-    # $name = '{0}_change' -f $name
-
     @{
         Label = $name
         Expression = [System.Management.Automation.ScriptBlock]::Create('colored-val $_ {0}' -f $name)
-        # Format = 'N1'
         Align = 'right'
     }    
 }
-
-
-
-
-
-# $fields = @(
-#     'date'
-#     (gen-field 'all'),              (gen-change-field 'all')
-#     (gen-field 'core'),             (gen-change-field 'core')
-#     (gen-field 'energy'),               (gen-change-field 'energy')
-#     (gen-field 'shelter'),              (gen-change-field 'shelter')
-#     (gen-field 'new_vehicles'),         (gen-change-field 'new_vehicles')
-#     (gen-field 'used_cars_and_trucks'), (gen-change-field 'used_cars_and_trucks')
-#     (gen-field 'food'),                 (gen-change-field 'food')
-# )
-
 
 $fields = @(
     'date'
@@ -265,50 +167,13 @@ $fields = @(
     (gen-colored-field 'new_vehicles')
     (gen-colored-field 'used_cars_and_trucks')
     (gen-colored-field 'food')
+    (gen-colored-field 'food_at_home')
+    (gen-colored-field 'food_away_from_home')    
 )
-
-$fields[1].Expression
-
-
-# $table | Format-Table date, all, (gen-field 'all_change'), core, (gen-field 'core_change')
 
 $table | Format-Table $fields
 
-$table
-
 # ----------------------------------------------------------------------
-# $data_all_nsa = get-bls-gov 'CUUR0000SA0'
-
-# add-null-property $data_all_nsa 'yoy'
-
-# add-yoy-property $data_all_nsa
-
-# $data_all_nsa | ft *
-# ----------------------------------------------------------------------
-# $data_core_nsa = get-bls-gov 'CUUR0000SA0L1E'
-
-# add-null-property $data_core_nsa 'yoy'
-
-# add-yoy-property $data_core_nsa
-
-# $data_core_nsa | ft *
-# ----------------------------------------------------------------------
-# $data_shelter_nsa = get-bls-gov 'CUUR0000SAH1'
-
-# add-null-property $data_shelter_nsa 'yoy'
-
-# add-yoy-property $data_shelter_nsa
-
-# $data_shelter   = get-bls-gov 'CUSR0000SAH1' # SAH1	Shelter
-# ----------------------------------------------------------------------
-# $data = get-bls-gov 'CUUR0000SAF1';     add-null-property $data 'yoy';   add-yoy-property $data;   $data_food_nsa = $data
-# $data = get-bls-gov 'CUUR0000SEHF01';   add-null-property $data 'yoy';   add-yoy-property $data;   $data_electricity_nsa = $data
-# ----------------------------------------------------------------------
-
-
-# $data_all_sa | Select-Object -Skip 1  | ForEach-Object { $_.mom.ToString('N1') }
-
-# $data_all_sa | Select-Object -Skip 1  | ForEach-Object { [math]::Round($_.mom,2) }
 
 $json = @{
     chart = @{
@@ -327,6 +192,9 @@ $json = @{
                 @{ type = 'line'; label = 'new_vehicles'         ; data = $data_new_vehicles         | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
                 @{ type = 'line'; label = 'used_cars_and_trucks' ; data = $data_used_cars_and_trucks | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
                 @{ type = 'line'; label = 'food'                 ; data = $data_food                 | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+                @{ type = 'line'; label = 'food_at_home'         ; data = $data_food_at_home         | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+                @{ type = 'line'; label = 'food_away_from_home'  ; data = $data_food_away_from_home  | Select-Object -Skip 1  | ForEach-Object mom; fill = $false; lineTension = 0; hidden = $true }
+
                 
                 # @{ type = 'line'; label = 'shelter'       ; data = $data_shelter_nsa        | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
                 # @{ type = 'line'; label = 'food'          ; data = $data_food_nsa           | Select-Object -Skip 12 | ForEach-Object yoy; fill = $false }
@@ -351,18 +219,4 @@ Start-Process ('https://quickchart.io/chart-maker/view/{0}' -f $id)
 exit
 # ----------------------------------------------------------------------
 
-# .\bls-gov-cpi.ps1 -api_key (Get-Content C:\Users\dharm\Dropbox\api-keys\bls-gov)
-
-. .\bls-gov-cpi-yoy.ps1 -api_key (Get-Content C:\Users\dharm\Dropbox\api-keys\bls-gov)
-
 .\bls-gov-cpi-mom.ps1 -api_key (Get-Content C:\Users\dharm\Dropbox\api-keys\bls-gov)
-
-# ----------------------------------------------------------------------
-
-$data_all | Select-Object *, @{ Label = 'yoy'; Expression = { 0 } } | ft *
-
-for ($i = 12; $i -lt $data_all.Count; $i++)
-{
-    '{0} {1}    {2} {3}' -f $data_all[$i-12].year, $data_all[$i-12].period, $data_all[$i].year, $data_all[$i].period
-}
-
